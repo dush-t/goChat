@@ -7,12 +7,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan Message)
+var clients = make(map[*websocket.Conn]bool) // connected clients
+var broadcast = make(chan Message)           // broadcast channel
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
-// Message object to be passed around the channel
+// Define our message object
 type Message struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
@@ -30,7 +34,7 @@ func main() {
 	log.Println("http server started on :8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe:", err)
+		log.Fatal("ListenAndServe: ", err)
 	}
 }
 
@@ -39,7 +43,6 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer ws.Close()
 
 	clients[ws] = true
@@ -52,6 +55,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			delete(clients, ws)
 			break
 		}
+
 		broadcast <- msg
 	}
 }
